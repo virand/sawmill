@@ -39,13 +39,13 @@ byte relayOffIcon[8] = {
 
 int speed = 10; // less number -> higher speed
 int numberOfRevolutions1=3;
-long timeDelayMilliseconds1=1000;
+long timeDelayMilliseconds1=5000;
 int numberOfRevolutions2=3;
 long timeDelayMilliseconds2=1000;
 int numberOfRevolutions3=3;
 long timeDelayMilliseconds3=1000;
 int numberOfReturningRevolutions=3;
-int softCoeff=30; // higher number -> harder
+int softCoeff=5; // higher number -> harder
 
 // Delay in half of seconds after pressing button
 int relay1DelayHalfSeconds=0;
@@ -76,16 +76,20 @@ const int relay3Pin=16;
 const int relay4Pin=17;
 
 unsigned long halfSecondsAfterStart=0;
+unsigned long halfSecondsAfterButtonPress=-1;
+boolean buttonWasPressed=false;
 int timer1_counter;
 int cycles=0;
 boolean updatingDisplay=true;
 
-int halfSecondsAfterPressingButton=0;
+//int halfSecondsAfterPressingButton=0;
+
+
 
 
 void relayManager()
 {
-  if( (halfSecondsAfterStart>=relay1DelayHalfSeconds) && (halfSecondsAfterStart<=relay1DelayHalfSeconds+relay1DurationHalfSeconds) ){
+  if( (halfSecondsAfterButtonPress>=relay1DelayHalfSeconds) && (halfSecondsAfterButtonPress<=relay1DelayHalfSeconds+relay1DurationHalfSeconds) ){
       digitalWrite(relay1Pin, HIGH);
       relay1State=true;
   }
@@ -95,7 +99,7 @@ void relayManager()
     relay1State=false;
   }
 
-  if( (halfSecondsAfterStart>=relay2DelayHalfSeconds) && (halfSecondsAfterStart<=relay2DelayHalfSeconds+relay2DurationHalfSeconds) ){
+  if( (halfSecondsAfterButtonPress>=relay2DelayHalfSeconds) && (halfSecondsAfterButtonPress<=relay2DelayHalfSeconds+relay2DurationHalfSeconds) ){
       digitalWrite(relay2Pin, HIGH);
       relay2State=true;
   }
@@ -105,7 +109,7 @@ void relayManager()
     relay2State=false;
   }
 
-  if( (halfSecondsAfterStart>=relay3DelayHalfSeconds) && (halfSecondsAfterStart<=relay3DelayHalfSeconds+relay3DurationHalfSeconds) ){
+  if( (halfSecondsAfterButtonPress>=relay3DelayHalfSeconds) && (halfSecondsAfterButtonPress<=relay3DelayHalfSeconds+relay3DurationHalfSeconds) ){
     digitalWrite(relay3Pin, HIGH);
     relay3State=true;
   }
@@ -115,7 +119,7 @@ void relayManager()
     relay3State=false;
   }
 
-  if( (halfSecondsAfterStart>=relay4DelayHalfSeconds) && (halfSecondsAfterStart<=relay4DelayHalfSeconds+relay4DurationHalfSeconds) ){
+  if( (halfSecondsAfterButtonPress>=relay4DelayHalfSeconds) && (halfSecondsAfterButtonPress<=relay4DelayHalfSeconds+relay4DurationHalfSeconds) ){
     digitalWrite(relay4Pin, HIGH);
     relay4State=true;
   }
@@ -217,7 +221,7 @@ void makeRevolutionsLeft(long numberOfRevolutions)
   updatingDisplay=true;
 }
 
-void makeSoftRevolutionsLeft(long numberOfRevolutions)
+void makeSoftRevolutionsLeft(long numberOfRevolutions, int steps)
 {
   updatingDisplay=false;
   for(int i=0; i<numberOfRevolutions;i++)
@@ -229,6 +233,15 @@ void makeSoftRevolutionsLeft(long numberOfRevolutions)
     else if (i==(numberOfRevolutions-1))
     {
       makeOneDeceleratingRevolutionLeft();
+    }
+    else if(i==(numberOfRevolutions-2))
+    {
+      makeOneRevolutionLeft();
+      for(int i=0; i<steps; i++){
+        makeOneStepLeft();
+        delay(speed);
+      }
+      
     }
     else
     {
@@ -252,7 +265,7 @@ void makeRevolutionsRight(long numberOfRevolutions)
   updatingDisplay=true;
 }
 
-void makeSoftRevolutionsRight(long numberOfRevolutions)
+void makeSoftRevolutionsRight(long numberOfRevolutions, int steps)
 {
   updatingDisplay=false;
   for(int i=0; i<numberOfRevolutions;i++)
@@ -264,6 +277,15 @@ void makeSoftRevolutionsRight(long numberOfRevolutions)
     else if (i==(numberOfRevolutions-1))
     {
       makeOneDeceleratingRevolutionRight();
+    }
+    else if (i==(numberOfRevolutions-2))
+    {
+      makeOneRevolutionRight();
+      for(int i=0; i<steps; i++)
+      {
+        makeOneStepRight();
+        delay(speed);
+      }
     }
     else
     {
@@ -362,6 +384,10 @@ ISR(TIMER1_OVF_vect)        // interrupt service routine
   TCNT1 = timer1_counter;   // preload timer
   digitalWrite(ledPin, digitalRead(ledPin) ^ 1);
   halfSecondsAfterStart++;
+  if(buttonWasPressed==true)
+  {
+    halfSecondsAfterButtonPress++;
+  }
   if(updatingDisplay==true){
     updateDisplay(cycles,relay1State,relay2State,relay3State,relay4State);
   }
@@ -373,13 +399,16 @@ void loop() {
   // If button was pressed
     if(digitalRead(buttonPin) == HIGH)
     {
-      makeSoftRevolutionsLeft(numberOfRevolutions1);
+      buttonWasPressed=true;
+      makeSoftRevolutionsLeft(numberOfRevolutions1, 100);
       delay(timeDelayMilliseconds1);
-      makeSoftRevolutionsLeft(numberOfRevolutions2);
+      makeSoftRevolutionsLeft(numberOfRevolutions2, 100);
       delay(timeDelayMilliseconds2);
-      makeSoftRevolutionsLeft(numberOfRevolutions3);
+      makeSoftRevolutionsLeft(numberOfRevolutions3, 100);
       delay(timeDelayMilliseconds3);
-      makeSoftRevolutionsRight(numberOfReturningRevolutions);
+      makeSoftRevolutionsRight(numberOfReturningRevolutions, 100);
       cycles++;
+      buttonWasPressed=false;
+      halfSecondsAfterButtonPress=-1;
     }
 }
